@@ -7,6 +7,27 @@ export const TransactionContext = React.createContext();
 
 const { ethereum } = window;
 
+
+const handleChange = (e, name) => {
+  setFormData((prevState) => ({
+    ...prevState,
+    [name]: e.target.value,
+  }));
+};
+
+const getAllTransactions = async () =>{
+  try {
+    if (!ethereum) return alert("Please install metamask");
+    const transactionsContract = getEthereumContract(); 
+    
+    const avaibleTransactions = await transactionsContract.getAllTransactions();
+
+    console.log(avaibleTransactions);
+  } catch (error) {
+    console.log(error);
+  }
+}
+
 const getEthereumContract = () => {
   const provider = new ethers.providers.Web3Provider(ethereum);
   const signer = provider.getSigner();
@@ -21,24 +42,17 @@ const getEthereumContract = () => {
 };
 
 export const TransactionProvider = ({ children }) => {
-  const initialState = [];
-  const [currentAccount, setcurrentAccount] = useState([]);
+  const [currentAccount, setCurrentAccount] = useState();
   const [formData, setFormData] = useState({
     addressTo: "",
     amount: "",
     keyword: "",
     message: "",
   });
+
   const [isLoading, setIsLoading] = useState(false);
   const [transactionCount, setTransactionCount] = useState(localStorage.getItem('transactionCount')); 
 
-
-  const handleChange = (e, name) => {
-    setFormData((prevState) => ({
-      ...prevState,
-      [name]: e.target.value,
-    }));
-  };
 
   const checkIfWalletConnected = async () => {
     try {
@@ -46,9 +60,9 @@ export const TransactionProvider = ({ children }) => {
 
       const accounts = await ethereum.request({ method: "eth_accounts" });
       // console.log(accounts);
-      if (accounts.lenght) {
+      if (accounts.length) {
         setCurrentAccount(accounts[0]);
-
+        getAllTransactions(); 
       } else {
         // console.log("No accounts found");
       }
@@ -58,19 +72,36 @@ export const TransactionProvider = ({ children }) => {
     }
   };
 
-  const connectWallet = async () => {
+  const  checkIfTransactionsExist = async () =>{
     try {
-      if (!ethereum) return alert("Please install metamask");
-      const accounts = await ethereum.request({
-        method: "eth_requestAccounts",
-      });
-      setCurrentAccount(accounts[0]);
+      const transactionsContract = getEthereumContract(); 
+      const transactionCount = await transactionsContract.getTransactionCount(); 
+
+      window.localStorage.setItem("transactionCount", transactionCount);
 
     } catch (error) {
       console.log(error);
-      throw new Error("No Ethereum object");
+
+      throw new Error("No ethereum object");
+    }
+  }
+
+  const connectWallet = async () => {
+    try {
+      if (!ethereum) return alert("Please install MetaMask.");
+
+      const accounts = await ethereum.request({ method: "eth_requestAccounts", });
+      setCurrentAccount(accounts[0]);
+
+      window.location.reload();
+
+    } catch (error) {
+      console.log(error);
+
+      throw new Error("No ethereum object");
     }
   };
+
 
   const sendTransaction = async () => {
     try {
@@ -79,18 +110,17 @@ export const TransactionProvider = ({ children }) => {
         const transactionsContract= getEthereumContract();
         const parsedAmount = ethers.utils.parseEther(amount);
 
-
         await ethereum.request({
             method: "eth_sendTransaction",
             params: [{
               from: currentAccount,
               to: addressTo,
-              gas: "0x5208", // must be hex - 21000 GWEI
-              value: parsedAmount._hex, // 0.0001 must convert and must be hex
+              gas: "0x76c0", // must be hex - 30400 GWEI
+              gasPrice: 0x9184e72a000, // 10000000000000
+              value: parsedAmount
             }],
           });
 
-        
         const transactionHash = await transactionsContract.addToBlockchain(addressTo, parsedAmount, message, keyword);    
             
         setIsLoading(true);
@@ -110,7 +140,8 @@ export const TransactionProvider = ({ children }) => {
 
   useEffect(() => {
     checkIfWalletConnected();
-  }, []);
+    checkIfTransactionsExist(); 
+  }, [transactionCount]);
 
   return (
     <TransactionContext.Provider value={{ connectWallet, currentAccount, formData, setFormData, handleChange, sendTransaction }}>

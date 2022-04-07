@@ -5,9 +5,10 @@ import { BsInfoCircle } from "react-icons/bs";
 
 import {TransactionContext} from '../context/TransactionsContext';
 import { Loader } from "./";
+import { shortenAddress } from '../utils/shortenAddress';
 
-const commonStyles =
-  "min-h-[70px] sm:px-0 px-2 sm:min-w-[120px] flex justify-center items-center border-[0.5px] border-gray-400 text-sm font-light text-white";
+
+const commonStyles = "min-h-[70px] sm:px-0 px-2 sm:min-w-[120px] flex justify-center items-center border-[0.5px] border-gray-400 text-sm font-light text-white";
 
 const Input = ({ placeholder, name, type, value, handleChange }) => (
   <input
@@ -21,9 +22,10 @@ const Input = ({ placeholder, name, type, value, handleChange }) => (
 );
 
 const Welcome = () => {
+
   const { connectWallet, currentAccount, formData, sendTransaction, handleChange } = useContext(TransactionContext);
 
-  const handleSubmit = (e) => {
+    const handleSubmit = (e) => {
     const { addressTo, amount, keyword, message } = formData; 
     e.preventDefault();
 
@@ -43,7 +45,7 @@ const Welcome = () => {
             Krtypo.
           </p>
           <br />
-          {currentAccount && (
+          {!currentAccount && (
           <button
             type="button"
             onClick={connectWallet}
@@ -73,7 +75,7 @@ const Welcome = () => {
                 <BsInfoCircle fontSize={17} color="fff" />
               </div>
               <div>
-                <p className="text-white font-light text-sm">Address</p>
+                <p className="text-white font-light text-sm">{ currentAccount ? shortenAddress(currentAccount) : "Address" }</p>
                 <p className="text-white font-semibold text-ls mt-1" >
                   Ethereum
                 </p>
